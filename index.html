@@ -131,22 +131,43 @@
                 toggleLoader(false);
             }
         }
-
-        function startScanner() {
+        
+        async function startScanner() {
+            // 1. Clean up UI
             document.getElementById('rescan-btn').classList.add('hidden');
             document.getElementById('result-card').classList.add('hidden');
             document.getElementById('reader').classList.remove('hidden');
-            
-            html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 250} });
-            html5QrcodeScanner.render((text) => {
-                // 🛑 AUTO-CLOSE CAMERA ON SUCCESS
-                html5QrcodeScanner.clear(); 
-                document.getElementById('reader').classList.add('hidden');
-                document.getElementById('rescan-btn').classList.remove('hidden');
-                
-                currentQrId = text;
-                fetchBook(text);
-            });
+
+            // 2. Kill any existing instance before starting a new one
+            if (html5QrcodeScanner) {
+                try {
+                    await html5QrcodeScanner.clear();
+                } catch (e) {
+                    console.log("Cleanup error:", e);
+                }
+            }
+
+            // 3. Re-initialize with a slight delay to allow the hardware to 'reset'
+            setTimeout(() => {
+                html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
+                    fps: 10, 
+                    qrbox: {width: 250, height: 250},
+                    rememberLastUsedCamera: true,
+                    aspectRatio: 1.0
+                });
+
+                html5QrcodeScanner.render((text) => {
+                    // Success logic
+                    html5QrcodeScanner.clear().then(() => {
+                        document.getElementById('reader').classList.add('hidden');
+                        document.getElementById('rescan-btn').classList.remove('hidden');
+                        currentQrId = text;
+                        fetchBook(text);
+                    }).catch(err => console.error("Failed to clear scanner", err));
+                }, (errorMessage) => {
+                    // Optional: silence the constant 'no QR detected' logs in console
+                });
+            }, 300); // 300ms pause
         }
 
         async function fetchBook(qrId) {
