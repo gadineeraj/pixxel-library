@@ -131,43 +131,51 @@
                 toggleLoader(false);
             }
         }
-        
+
+        let html5QrCode = null; // Use the lower-level class
+
         async function startScanner() {
-            // 1. Clean up UI
+            const readerElement = document.getElementById('reader');
             document.getElementById('rescan-btn').classList.add('hidden');
             document.getElementById('result-card').classList.add('hidden');
-            document.getElementById('reader').classList.remove('hidden');
+            readerElement.classList.remove('hidden');
 
-            // 2. Kill any existing instance before starting a new one
-            if (html5QrcodeScanner) {
+            // 1. If an instance exists, stop it and delete it properly
+            if (html5QrCode && html5QrCode.isScanning) {
                 try {
-                    await html5QrcodeScanner.clear();
-                } catch (e) {
-                    console.log("Cleanup error:", e);
-                }
+                    await html5QrCode.stop();
+                } catch (e) { console.warn("Stop failed:", e); }
             }
 
-            // 3. Re-initialize with a slight delay to allow the hardware to 'reset'
-            setTimeout(() => {
-                html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
-                    fps: 10, 
-                    qrbox: {width: 250, height: 250},
-                    rememberLastUsedCamera: true,
-                    aspectRatio: 1.0
-                });
+            // 2. Create a fresh instance targeting the 'reader' div
+            html5QrCode = new Html5Qrcode("reader");
 
-                html5QrcodeScanner.render((text) => {
-                    // Success logic
-                    html5QrcodeScanner.clear().then(() => {
-                        document.getElementById('reader').classList.add('hidden');
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+            // 3. Start the camera with 'environment' (back camera) priority
+            html5QrCode.start(
+                { facingMode: "environment" }, 
+                config,
+                (text) => {
+                    // SUCCESS: QR Code Detected
+                    html5QrCode.stop().then(() => {
+                        readerElement.classList.add('hidden');
                         document.getElementById('rescan-btn').classList.remove('hidden');
                         currentQrId = text;
                         fetchBook(text);
-                    }).catch(err => console.error("Failed to clear scanner", err));
-                }, (errorMessage) => {
-                    // Optional: silence the constant 'no QR detected' logs in console
-                });
-            }, 300); // 300ms pause
+                    });
+                },
+                (errorMessage) => {
+                    // Scanning... (ignore noise)
+                }
+            ).catch((err) => {
+                console.error("Camera Start Error:", err);
+                // Fallback: If it hangs, offer a manual restart
+                readerElement.innerHTML = `<div class="p-8 text-center">
+                    <p class="text-red-400 mb-4">Camera Error or Permission Denied</p>
+                    <button onclick="location.reload()" class="bg-slate-700 p-2 rounded">Refresh Page</button>
+                </div>`;
+            });
         }
 
         async function fetchBook(qrId) {
