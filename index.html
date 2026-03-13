@@ -65,8 +65,8 @@
                 </select>
             </div>
             <div class="flex gap-4">
-                <button onclick="processTransaction('Check-Out')" class="flex-1 bg-blue-600 p-4 rounded-xl font-black transition-all">CHECK OUT</button>
-                <button onclick="processTransaction('Check-In')" class="flex-1 bg-emerald-600 p-4 rounded-xl font-black transition-all">CHECK IN</button>
+                <button onclick="processTransaction('Borrow')" class="flex-1 bg-blue-600 p-4 rounded-xl font-black shadow-lg shadow-blue-900/40 active:scale-95 transition-all uppercase">Borrow</button>
+                <button onclick="processTransaction('Return')" class="flex-1 bg-emerald-600 p-4 rounded-xl font-black shadow-lg shadow-emerald-900/40 active:scale-95 transition-all uppercase">Return</button>
             </div>
         </div>
     </div>
@@ -209,14 +209,22 @@
                 const response = await fetch(SCRIPT_URL, {
                     method: 'POST',
                     body: JSON.stringify({
-                        qrId: currentQrId, userEmail: currentUser.email,
-                        type: type, location: office
+                        qrId: currentQrId, 
+                        userEmail: currentUser.email,
+                        type: type, 
+                        location: office
                     })
                 });
                 const result = await response.json();
+                
                 if (result.success) {
-                    alert(`Book ${type}ed!`);
-                    location.href = window.location.pathname; 
+                    alert(`✅ SUCCESS: Book ${type === 'Borrow' ? 'Borrowed' : 'Returned'}!`);
+                    
+                    // --- FIXED LOGIC: Instead of reloading, we just reset the UI ---
+                    document.getElementById('result-card').classList.add('hidden'); // Hide the book details
+                    document.getElementById('rescan-btn').classList.remove('hidden'); // Show the scan button
+                    currentQrId = null; // Clear the current book ID
+                    toggleLoader(false);
                 } else {
                     alert(`Denied: ${result.error}`);
                     toggleLoader(false);
