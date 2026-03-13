@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixxel Library</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center p-4">
+
+    <div id="login-section" class="w-full max-w-sm mt-20">
+        <h1 class="text-3xl font-bold text-blue-400 mb-2 text-center">Pixxel Library</h1>
+        <p class="text-slate-400 text-center mb-6">Enter your email to continue</p>
+        <input type="email" id="email-input" placeholder="name@pixxel.space" class="w-full p-3 rounded bg-slate-800 border border-slate-700 mb-4 focus:outline-none focus:border-blue-500">
+        <button onclick="handleLogin()" class="w-full bg-blue-600 hover:bg-blue-500 p-3 rounded font-bold transition">Login</button>
+    </div>
+
+    <div id="scanner-section" class="w-full max-w-md hidden">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h2 id="welcome-msg" class="text-lg font-bold"></h2>
+                <p class="text-xs text-slate-400">Scanning from:</p>
+                <select id="location-select" class="bg-slate-800 text-xs p-1 rounded border border-slate-700 mt-1">
+                    <option value="BLR-HQ">BLR-HQ</option>
+                    <option value="BLR-HBR">BLR-HBR</option>
+                    <option value="LA">LA</option>
+                </select>
+            </div>
+            <button onclick="location.reload()" class="text-xs text-slate-500 underline">Logout</button>
+        </div>
+
+        <div id="reader" class="overflow-hidden rounded-xl border-2 border-slate-700 shadow-2xl"></div>
+
+        <div id="result-card" class="mt-6 p-5 bg-slate-800 rounded-xl border border-slate-700 hidden animate-pulse">
+            <h3 id="book-title" class="text-xl font-bold text-blue-300"></h3>
+            <p id="book-status" class="text-sm text-slate-400 mt-1 mb-6"></p>
+            <div class="flex gap-3">
+                <button onclick="processTransaction('Check-Out')" class="flex-1 bg-blue-600 p-4 rounded-lg font-bold shadow-lg active:scale-95 transition">Check Out</button>
+                <button onclick="processTransaction('Check-In')" class="flex-1 bg-emerald-600 p-4 rounded-lg font-bold shadow-lg active:scale-95 transition">Check In</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loader" class="mt-4 text-blue-400 italic hidden">Processing...</div>
+
+    <script>
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzDyrhnc3yWi6mV97Ma87cbClANbbs3IDL_E0bLPH5ByhAfpVxJNbLdlVi-0Z57HziSSA/exec";
+        let currentUser = null;
+        let currentQrId = null;
+        let html5QrcodeScanner = null;
+
+        async function handleLogin() {
+            const email = document.getElementById('email-input').value;
+            if (!email.includes('@')) return alert("Enter a valid email");
+            
+            toggleLoader(true);
+            const res = await fetch(`${SCRIPT_URL}?action=getUser&email=${email}`);
+            const user = await res.json();
+            toggleLoader(false);
+
+            if (user.exists) {
+                currentUser = { email, name: user.name };
+                document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('scanner-section').classList.remove('hidden');
+                document.getElementById('welcome-msg').innerText = `Hi, ${user.name}!`;
+                startScanner();
+            } else {
+                alert("Email not found in Pixxel database.");
+            }
+        }
+
+        function startScanner() {
+            html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+            html5QrcodeScanner.render((text) => {
+                currentQrId = text;
+                fetchBook(text);
+            });
+        }
+
+        async function fetchBook(qrId) {
+            toggleLoader(true);
+            const res = await fetch(`${SCRIPT_URL}?action=getBook&qrId=${qrId}`);
+            const data = await res.json();
+            toggleLoader(false);
+
+            if(data.error) return alert("Book not found");
+
+            document.getElementById('result-card').classList.remove('hidden', 'animate-pulse');
+            document.getElementById('book-title').innerText = `Book: ${qrId}`;
+            document.getElementById('book-status').innerText = `Currently ${data.status} @ ${data.location}`;
+        }
+
+        async function processTransaction(type) {
+            toggleLoader(true);
+            const location = document.getElementById('location-select').value;
+            
+            await fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({
+                    qrId: currentQrId,
+                    userEmail: currentUser.email,
+                    type: type,
+                    location: location
+                })
+            });
+
+            alert(`Book successfully ${type}ed at ${location}`);
+            location.reload();
+        }
+
+        function toggleLoader(show) {
+            document.getElementById('loader').classList.toggle('hidden', !show);
+        }
+    </script>
+</body>
+</html>
