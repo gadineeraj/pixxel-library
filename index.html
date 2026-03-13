@@ -67,6 +67,10 @@
             <button onclick="location.reload()" class="text-[10px] bg-slate-700 px-3 py-1 rounded-full uppercase font-bold text-slate-300">Logout</button>
         </div>
 
+        <div id="scan-instructions" class="text-center p-4 bg-blue-900/20 rounded-xl mb-4 border border-blue-500/20">
+            <p class="text-sm font-medium text-blue-300">Point at the Pixxel QR code on the inside cover.</p>
+        </div>
+
         <div id="scanner-container">
             <div id="reader" class="overflow-hidden rounded-2xl border-2 border-slate-700 bg-slate-950 shadow-2xl"></div>
             <button id="rescan-btn" onclick="startScanner()" class="w-full mt-4 bg-slate-800 p-4 rounded-xl font-bold hidden border border-slate-700 hover:bg-slate-700 transition">Scan Another Book</button>
@@ -120,8 +124,8 @@
                     
                     // --- 🚀 DEEP LINK LOGIC ---
                     if (deepLinkQrId) {
-                        currentQrId = deepLinkQrId;
-                        fetchBook(deepLinkQrId);
+                        currentQrId = extractId(window.location.href); 
+                        fetchBook(currentQrId);
                     } else {
                         startScanner();
                     }
@@ -131,6 +135,18 @@
             } catch (e) {
                 alert("Auth Failed. Check your Internet/Apps Script URL.");
                 toggleLoader(false);
+            }
+        }
+        function extractId(input) {
+            try {
+                // Check if the scanned text is a URL
+                if (input.includes('?id=')) {
+                    const url = new URL(input);
+                    return url.searchParams.get('id');
+                }
+                return input; // It's already a plain ID
+            } catch (e) {
+                return input; // Fallback to plain input
             }
         }
 
@@ -165,11 +181,14 @@
         }
 
         function onScanSuccess(decodedText) {
+            // Workflow 2: Extract ID from the scanned URL string
+            const bookId = extractId(decodedText);
+            
             html5QrcodeScanner.clear().then(() => {
                 document.getElementById('reader').classList.add('hidden');
                 document.getElementById('rescan-btn').classList.remove('hidden');
-                currentQrId = decodedText;
-                fetchBook(decodedText);
+                currentQrId = bookId; // Store the cleaned ID
+                fetchBook(bookId);
             });
         }
 
@@ -192,8 +211,13 @@
             document.getElementById('result-card').classList.remove('hidden');
             document.getElementById('book-qr-tag').innerText = data.qrId;
             document.getElementById('current-loc-tag').innerText = `Current: ${data.location}`;
-            document.getElementById('book-title').innerText = `Book: ${data.bookId}`;
-            document.getElementById('book-status').innerText = `Status: ${data.status}`;
+            
+            // UPDATED THESE LINES:
+            document.getElementById('book-title').innerText = data.title; 
+            document.getElementById('book-status').innerHTML = `
+                <span class="block text-blue-400 mb-1">by ${data.author}</span>
+                <span class="text-slate-500 font-bold uppercase text-[10px]">Status: ${data.status}</span>
+            `;
         }
 
         async function processTransaction(type) {
