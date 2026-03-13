@@ -9,29 +9,31 @@
     <style>
         /* Targeting library internal elements for better UI */
         #reader button { 
-            padding: 12px 24px !important; 
-            border: 1px solid #334155 !important; 
-            background: #1e293b !important; 
-            color: white !important; 
-            border-radius: 12px !important; 
-            margin: 8px auto !important;
-            font-weight: 600 !important;
-            display: block !important;
-            width: 80% !important;
-            transition: all 0.2s;
-        }
-        #reader button:active { background: #334155 !important; transform: scale(0.98); }
-        #reader select {
-            padding: 10px;
-            background: #0f172a;
-            border: 1px solid #334155;
-            border-radius: 8px;
-            color: white;
-            margin: 10px auto;
-            display: block;
-        }
-        #reader { border: none !important; }
-        #reader__dashboard_section_csr button { width: auto !important; display: inline-block !important; margin: 5px !important; }
+        display: block !important;
+        width: 100% !important;
+        max-width: 300px !important;
+        margin: 15px auto !important;
+        padding: 14px !important;
+        background-color: #2563eb !important; /* Blue-600 */
+        color: white !important;
+        border-radius: 12px !important;
+        font-weight: bold !important;
+        border: none !important;
+        cursor: pointer !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+    }
+    #reader __dashboard_section_csr button {
+        background-color: #475569 !important; /* Slate-600 for secondary buttons */
+    }
+    #reader select {
+        width: 80% !important;
+        padding: 10px !important;
+        margin: 10px auto !important;
+        display: block !important;
+        background: #1e293b !important;
+        color: white !important;
+        border-radius: 8px !important;
+    }
     </style>
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col items-center p-4">
@@ -135,47 +137,44 @@
         let html5QrCode = null; // Use the lower-level class
 
         async function startScanner() {
-            const readerElement = document.getElementById('reader');
+            // Reset UI states
             document.getElementById('rescan-btn').classList.add('hidden');
             document.getElementById('result-card').classList.add('hidden');
-            readerElement.classList.remove('hidden');
+            const readerDiv = document.getElementById('reader');
+            readerDiv.classList.remove('hidden');
+            readerDiv.innerHTML = ""; // Clear internal library state
 
-            // 1. If an instance exists, stop it and delete it properly
-            if (html5QrCode && html5QrCode.isScanning) {
+            // Kill any existing instances
+            if (html5QrcodeScanner) {
                 try {
-                    await html5QrCode.stop();
-                } catch (e) { console.warn("Stop failed:", e); }
+                    await html5QrcodeScanner.clear();
+                } catch (e) { console.warn("Cleanup ignored", e); }
             }
 
-            // 2. Create a fresh instance targeting the 'reader' div
-            html5QrCode = new Html5Qrcode("reader");
-
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-
-            // 3. Start the camera with 'environment' (back camera) priority
-            html5QrCode.start(
-                { facingMode: "environment" }, 
-                config,
-                (text) => {
-                    // SUCCESS: QR Code Detected
-                    html5QrCode.stop().then(() => {
-                        readerElement.classList.add('hidden');
-                        document.getElementById('rescan-btn').classList.remove('hidden');
-                        currentQrId = text;
-                        fetchBook(text);
-                    });
-                },
-                (errorMessage) => {
-                    // Scanning... (ignore noise)
-                }
-            ).catch((err) => {
-                console.error("Camera Start Error:", err);
-                // Fallback: If it hangs, offer a manual restart
-                readerElement.innerHTML = `<div class="p-8 text-center">
-                    <p class="text-red-400 mb-4">Camera Error or Permission Denied</p>
-                    <button onclick="location.reload()" class="bg-slate-700 p-2 rounded">Refresh Page</button>
-                </div>`;
+            // Initialize with better mobile support
+            html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
+                fps: 15, 
+                qrbox: {width: 250, height: 250},
+                rememberLastUsedCamera: true,
+                supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
             });
+
+            // This render call will bring back the "Request Camera Permissions" button
+            // Mobile browsers prefer this "Tap to start" flow for security.
+            html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        }
+
+        function onScanSuccess(decodedText) {
+            html5QrcodeScanner.clear().then(() => {
+                document.getElementById('reader').classList.add('hidden');
+                document.getElementById('rescan-btn').classList.remove('hidden');
+                currentQrId = decodedText;
+                fetchBook(decodedText);
+            });
+        }
+
+        function onScanFailure(error) {
+            // Usually just "QR not found in frame", so we stay silent
         }
 
         async function fetchBook(qrId) {
