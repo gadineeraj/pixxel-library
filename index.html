@@ -3,76 +3,147 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pixxel Library</title>
+    <title>Pixxel Library Pro</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Targeting library internal elements for better UI */
+        #reader button { 
+            padding: 12px 24px !important; 
+            border: 1px solid #334155 !important; 
+            background: #1e293b !important; 
+            color: white !important; 
+            border-radius: 12px !important; 
+            margin: 8px auto !important;
+            font-weight: 600 !important;
+            display: block !important;
+            width: 80% !important;
+            transition: all 0.2s;
+        }
+        #reader button:active { background: #334155 !important; transform: scale(0.98); }
+        #reader select {
+            padding: 10px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: white;
+            margin: 10px auto;
+            display: block;
+        }
+        #reader { border: none !important; }
+        #reader__dashboard_section_csr button { width: auto !important; display: inline-block !important; margin: 5px !important; }
+    </style>
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col items-center p-4">
 
     <div id="login-section" class="w-full max-w-sm mt-20">
-        <h1 class="text-3xl font-bold text-blue-400 mb-2 text-center">Pixxel Library</h1>
-        <p class="text-slate-400 text-center mb-6">Enter your email to continue</p>
-        <input type="email" id="email-input" placeholder="name@pixxel.space" class="w-full p-3 rounded bg-slate-800 border border-slate-700 mb-4 focus:outline-none focus:border-blue-500">
-        <button onclick="handleLogin()" class="w-full bg-blue-600 hover:bg-blue-500 p-3 rounded font-bold transition">Login</button>
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-black tracking-tight text-blue-500">PIXXEL</h1>
+            <p class="text-slate-400 uppercase tracking-widest text-xs mt-2 font-bold">Library Management</p>
+        </div>
+        
+        <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
+            <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Pixxel Email</label>
+            <input type="email" id="email-input" placeholder="id@pixxel.space" class="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+            <button onclick="handleLogin()" class="w-full bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold shadow-lg shadow-blue-900/20 transition-all">Log In</button>
+        </div>
     </div>
 
-    <div id="scanner-section" class="w-full max-w-md hidden">
-        <div class="flex justify-between items-center mb-6">
+    <div id="app-section" class="w-full max-w-md hidden">
+        <div class="flex justify-between items-start mb-6 bg-slate-800 p-4 rounded-2xl border border-slate-700">
             <div>
-                <h2 id="welcome-msg" class="text-lg font-bold"></h2>
-                <p class="text-xs text-slate-400">Scanning from:</p>
-                <select id="location-select" class="bg-slate-800 text-xs p-1 rounded border border-slate-700 mt-1">
-                    <option value="BLR-HQ">BLR-HQ</option>
-                    <option value="BLR-HBR">BLR-HBR</option>
-                    <option value="LA">LA</option>
-                </select>
+                <h2 id="welcome-msg" class="text-lg font-bold text-blue-400"></h2>
+                <div class="mt-2">
+                    <label class="text-[10px] text-slate-500 uppercase font-black block">Office Location</label>
+                    <select id="location-select" class="bg-transparent text-sm font-bold focus:outline-none cursor-pointer">
+                        <option value="BLR-HQ">BLR-HQ (Bengaluru)</option>
+                        <option value="BLR-HBR">BLR-HBR (Bengaluru)</option>
+                        <option value="LA">LA (Los Angeles)</option>
+                    </select>
+                </div>
             </div>
-            <button onclick="location.reload()" class="text-xs text-slate-500 underline">Logout</button>
+            <button onclick="location.reload()" class="text-[10px] bg-slate-700 px-3 py-1 rounded-full uppercase font-bold text-slate-300">Logout</button>
         </div>
 
-        <div id="reader" class="overflow-hidden rounded-xl border-2 border-slate-700 shadow-2xl"></div>
+        <div id="scanner-container">
+            <div id="reader" class="overflow-hidden rounded-2xl border-2 border-slate-700 bg-slate-950 shadow-2xl"></div>
+            <button id="rescan-btn" onclick="startScanner()" class="w-full mt-4 bg-slate-800 p-4 rounded-xl font-bold hidden border border-slate-700 hover:bg-slate-700 transition">Scan Another Book</button>
+        </div>
 
-        <div id="result-card" class="mt-6 p-5 bg-slate-800 rounded-xl border border-slate-700 hidden animate-pulse">
-            <h3 id="book-title" class="text-xl font-bold text-blue-300"></h3>
-            <p id="book-status" class="text-sm text-slate-400 mt-1 mb-6"></p>
-            <div class="flex gap-3">
-                <button onclick="processTransaction('Check-Out')" class="flex-1 bg-blue-600 p-4 rounded-lg font-bold shadow-lg active:scale-95 transition">Check Out</button>
-                <button onclick="processTransaction('Check-In')" class="flex-1 bg-emerald-600 p-4 rounded-lg font-bold shadow-lg active:scale-95 transition">Check In</button>
+        <div id="result-card" class="mt-6 p-6 bg-slate-800 rounded-2xl border border-blue-500/30 shadow-2xl hidden">
+            <div class="flex items-center justify-between mb-4">
+                <span class="bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-tighter" id="book-qr-tag"></span>
+                <span class="text-xs text-slate-500" id="current-loc-tag"></span>
+            </div>
+            <h3 id="book-title" class="text-2xl font-bold mb-1 italic">Fetching title...</h3>
+            <p id="book-status" class="text-sm text-slate-400 mb-8 font-medium italic"></p>
+            
+            <div class="flex gap-4">
+                <button onclick="processTransaction('Check-Out')" class="flex-1 bg-blue-600 p-4 rounded-xl font-black shadow-lg shadow-blue-900/40 active:scale-95 transition-all">CHECK OUT</button>
+                <button onclick="processTransaction('Check-In')" class="flex-1 bg-emerald-600 p-4 rounded-xl font-black shadow-lg shadow-emerald-900/40 active:scale-95 transition-all">CHECK IN</button>
             </div>
         </div>
     </div>
 
-    <div id="loader" class="mt-4 text-blue-400 italic hidden">Processing...</div>
+    <div id="loader" class="mt-8 flex items-center gap-2 text-blue-500 font-bold hidden">
+        <svg class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+        <span>Synchronizing with Database...</span>
+    </div>
 
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzDyrhnc3yWi6mV97Ma87cbClANbbs3IDL_E0bLPH5ByhAfpVxJNbLdlVi-0Z57HziSSA/exec";
+        // --- 🔗 URL PARAMETER DETECTION ---
+        const urlParams = new URLSearchParams(window.location.search);
+        let deepLinkQrId = urlParams.get('id'); 
+
         let currentUser = null;
         let currentQrId = null;
         let html5QrcodeScanner = null;
 
         async function handleLogin() {
-            const email = document.getElementById('email-input').value;
-            if (!email.includes('@')) return alert("Enter a valid email");
+            const email = document.getElementById('email-input').value.trim();
+            if (!email.includes('@')) return alert("Enter your Pixxel Email");
             
             toggleLoader(true);
-            const res = await fetch(`${SCRIPT_URL}?action=getUser&email=${email}`);
-            const user = await res.json();
-            toggleLoader(false);
+            try {
+                const res = await fetch(`${SCRIPT_URL}?action=getUser&email=${email}`);
+                const user = await res.json();
+                toggleLoader(false);
 
-            if (user.exists) {
-                currentUser = { email, name: user.name };
-                document.getElementById('login-section').classList.add('hidden');
-                document.getElementById('scanner-section').classList.remove('hidden');
-                document.getElementById('welcome-msg').innerText = `Hi, ${user.name}!`;
-                startScanner();
-            } else {
-                alert("Email not found in Pixxel database.");
+                if (user.exists) {
+                    currentUser = { email, name: user.name };
+                    document.getElementById('login-section').classList.add('hidden');
+                    document.getElementById('app-section').classList.remove('hidden');
+                    document.getElementById('welcome-msg').innerText = `Hi, ${user.name.split(' ')[0]}!`;
+                    
+                    // --- 🚀 DEEP LINK LOGIC ---
+                    if (deepLinkQrId) {
+                        currentQrId = deepLinkQrId;
+                        fetchBook(deepLinkQrId);
+                    } else {
+                        startScanner();
+                    }
+                } else {
+                    alert("Email not recognized in the system.");
+                }
+            } catch (e) {
+                alert("Auth Failed. Check your Internet/Apps Script URL.");
+                toggleLoader(false);
             }
         }
 
         function startScanner() {
-            html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+            document.getElementById('rescan-btn').classList.add('hidden');
+            document.getElementById('result-card').classList.add('hidden');
+            document.getElementById('reader').classList.remove('hidden');
+            
+            html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 250} });
             html5QrcodeScanner.render((text) => {
+                // 🛑 AUTO-CLOSE CAMERA ON SUCCESS
+                html5QrcodeScanner.clear(); 
+                document.getElementById('reader').classList.add('hidden');
+                document.getElementById('rescan-btn').classList.remove('hidden');
+                
                 currentQrId = text;
                 fetchBook(text);
             });
@@ -84,29 +155,39 @@
             const data = await res.json();
             toggleLoader(false);
 
-            if(data.error) return alert("Book not found");
+            if(data.error) {
+                alert("Book ID not found in catalog.");
+                startScanner();
+                return;
+            }
 
-            document.getElementById('result-card').classList.remove('hidden', 'animate-pulse');
-            document.getElementById('book-title').innerText = `Book: ${qrId}`;
-            document.getElementById('book-status').innerText = `Currently ${data.status} @ ${data.location}`;
+            document.getElementById('result-card').classList.remove('hidden');
+            document.getElementById('book-qr-tag').innerText = data.qrId;
+            document.getElementById('current-loc-tag').innerText = `Current: ${data.location}`;
+            document.getElementById('book-title').innerText = `Book: ${data.bookId}`;
+            document.getElementById('book-status').innerText = `Status: ${data.status}`;
         }
 
         async function processTransaction(type) {
             toggleLoader(true);
-            const location = document.getElementById('location-select').value;
+            const office = document.getElementById('location-select').value;
             
-            await fetch(SCRIPT_URL, {
-                method: 'POST',
-                body: JSON.stringify({
-                    qrId: currentQrId,
-                    userEmail: currentUser.email,
-                    type: type,
-                    location: location
-                })
-            });
-
-            alert(`Book successfully ${type}ed at ${location}`);
-            location.reload();
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        qrId: currentQrId,
+                        userEmail: currentUser.email,
+                        type: type,
+                        location: office
+                    })
+                });
+                alert(`SUCCESS: Book ${type}ed at ${office}`);
+                location.href = window.location.pathname; // Reload without ID to reset
+            } catch (e) {
+                alert("Transaction failed. Try again.");
+                toggleLoader(false);
+            }
         }
 
         function toggleLoader(show) {
